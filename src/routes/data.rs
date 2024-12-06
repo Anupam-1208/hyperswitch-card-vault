@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use axum::{routing::post, Json};
+use axum::{extract::path, routing::post, Json};
 
 #[cfg(feature = "limit")]
 use axum::{error_handling::HandleErrorLayer, response::IntoResponse};
@@ -23,6 +23,9 @@ use crate::{
     tenant::GlobalAppState,
     utils,
 };
+use crate::metric::flag;
+use opentelemetry::KeyValue;
+use crate::metric::metric_middleware as custom_metric_middleware;
 
 #[cfg(feature = "middleware")]
 use crate::middleware as custom_middleware;
@@ -70,10 +73,26 @@ pub fn serve(
     let delete_route = post(delete_card);
 
     let router = axum::Router::new()
-        .route("/delete", delete_route)
-        .route("/add", post(add_card))
-        .route("/retrieve", post(retrieve_card))
-        .route("/fingerprint", post(get_or_insert_fingerprint));
+        .route("/delete", delete_route.route_layer(axum::middleware::from_fn({
+                let metric_type = &flag::DELETE_CARD_API_LATENCY;
+                let key_value = [KeyValue::new("route", "/data/delete")].to_vec();
+                move |req, next| custom_metric_middleware::metric_middleware(req, next, metric_type, key_value.clone())
+            })),)
+        .route("/add", post(add_card).route_layer(axum::middleware::from_fn({
+                let metric_type = &flag::ADD_CARD_API_LATENCY;
+                let key_value = [KeyValue::new("route", "/data/add")].to_vec();
+                move |req, next| custom_metric_middleware::metric_middleware(req, next, metric_type, key_value.clone())
+            })),)
+        .route("/retrieve", post(retrieve_card).route_layer(axum::middleware::from_fn({
+                let metric_type = &flag::RETRIEVE_CARD_API_LATENCY;
+                let key_value = [KeyValue::new("route", "/data/retrive")].to_vec();
+                move |req, next| custom_metric_middleware::metric_middleware(req, next, metric_type, key_value.clone())
+            })),)
+        .route("/fingerprint", post(get_or_insert_fingerprint).route_layer(axum::middleware::from_fn({
+                let metric_type = &flag::FINGERPRINT_API_LATENCY;
+                let key_value = [KeyValue::new("route", "/data/fingerprint")].to_vec();
+                move |req, next| custom_metric_middleware::metric_middleware(req, next, metric_type, key_value.clone())
+            })),);
 
     // v2 routes
     let router = router.nest(

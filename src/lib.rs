@@ -5,6 +5,7 @@ pub mod crypto;
 pub mod custom_extractors;
 pub mod error;
 pub mod logger;
+pub mod metric;
 #[cfg(feature = "middleware")]
 pub mod middleware;
 pub mod routes;

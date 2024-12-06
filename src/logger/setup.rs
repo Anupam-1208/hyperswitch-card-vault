@@ -9,6 +9,7 @@ use super::{config, formatter::FormattingLayer, storage::StorageSubscription};
 #[derive(Debug)]
 pub struct TelemetryGuard {
     _log_guards: Vec<WorkerGuard>,
+    // _metric_guards: Vec<WorkerGuard>,
 }
 
 /// Setup logging sub-system specifying the logging configuration, service (binary) name, and a
